@@ -1,0 +1,5 @@
+{:deps
+ {;;com.datomic/client-pro {:mvn/version "0.8.16"}
+  com.datomic/datomic-free {:mvn/version "0.9.5697"}
+  org.wikidata.wdtk/wdtk-wikibaseapi {:mvn/version "0.8.0"}
+  gadget {:mvn/version "0.1.1"}}}
