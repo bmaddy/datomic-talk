@@ -8,7 +8,6 @@
 (comment
   (d/delete-database uri)
   (d/create-database uri)
-
   )
 
 (def conn (d/connect uri))
@@ -94,7 +93,10 @@
 (def earth-id (-> @result :tempids (get "earth")))
 (def asia-id (-> @result :tempids (get "asia")))
 
-(gadget.core/inspect-entity-tree (d/entity (d/db conn) asia-id))
+(comment
+  (gadget.core/inspect-entity-tree (d/entity (d/db conn) asia-id))
+
+  )
 
 
 
@@ -200,44 +202,19 @@
 
 
 
-;; how this could look in Datomic
+  ;; how this could look in Datomic
 
-;; [entity attribute      value         transaction added?]
-#{ [11     :name          "Earth"       6           true]
-   [11     :mass          5,972.37      6           true]
-   [11     :highest-point 13            6           true]
-   [12     :name          "Asia"        6           true]
-   [12     :highest-point 13            6           true]
-   [12     :mountains     13            6           true]
-   [12     :mountains     19            6           true]
-   [13     :name          "Mt. Everest" 6           true]}
+  ;; [entity attribute      value         transaction added?]
+  #{ [11     :name          "Earth"       6           true]
+    [11     :mass          5,972.37      6           true]
+    [11     :highest-point 13            6           true]
+    [12     :name          "Asia"        6           true]
+    [12     :highest-point 13            6           true]
+    [12     :mountains     13            6           true]
+    [12     :mountains     19            6           true]
+    [13     :name          "Mt. Everest" 6           true]}
 
-   ;; Q: What is an entity without any attributes?
-
-
-
-
-
-
-
-;; But wait, attributes are entities too!
-
-;; [entity attribute      value          transaction added?]
-#{ [1      :db/ident      :name          5           true]
-   [2      :db/ident      :mass          5           true]
-   [3      :db/ident      :highest-point 5           true]
-   [4      :db/ident      :mountains     5           true]
-   [11     1              "Earth"        6           true]
-   [11     2              5,972.37       6           true]
-   [11     3              13             6           true]
-   [12     1              "Asia"         6           true]
-   [12     3              13             6           true]
-   [12     4              13             6           true]
-   [12     4              19             6           true]
-   [13     1              "Mt. Everest"  6           true]
-   [13     5              :mountain      6           true]}
-
-   ;; Note: tx is db time, not wall clock time
+  ;; Q: What is an entity without any attributes?
 
 
 
@@ -245,8 +222,24 @@
 
 
 
+  ;; But wait, attributes are entities too!
 
-;; Querying methods
+  ;; [entity attribute      value          transaction added?]
+  #{ [1      :db/ident      :name          5           true]
+    [2      :db/ident      :mass          5           true]
+    [3      :db/ident      :highest-point 5           true]
+    [4      :db/ident      :mountains     5           true]
+    [11     1              "Earth"        6           true]
+    [11     2              5,972.37       6           true]
+    [11     3              13             6           true]
+    [12     1              "Asia"         6           true]
+    [12     3              13             6           true]
+    [12     4              13             6           true]
+    [12     4              19             6           true]
+    [13     1              "Mt. Everest"  6           true]
+    [13     5              :mountain      6           true]}
+
+  ;; Note: tx is db time, not wall clock time
 
 
 
@@ -255,43 +248,7 @@
 
 
 
-;; Datum queries
-;; Everything is indexed
-;; EAVT - entity, attribute, value, tx
-;; AEVT - attribute, entity, value, tx
-;; AVET - attribute, value, entity, tx
-;; VAET - value, attribute, entity, tx
-
-;; get all data associated with an entity
-(pprint (take 10 (d/datoms (d/db conn) :eavt earth-id)))
-;; get all the info about this attribute
-(pprint (take 10 (d/datoms (d/db conn) :eavt 64)))
-;; :db/ident has :db/unique set, so we can use a lookup ref
-(pprint (take 10 (d/datoms (d/db conn) :eavt [:db/ident :rdfs/label])))
-;; also, :db/ident is just a programmatic name for a :db/id
-(pprint (take 10 (d/datoms (d/db conn) :eavt :rdfs/label)))
-
-;; an indexed (and unique) attribute
-(pprint (take 10 (d/datoms (d/db conn) :eavt :wd/entity)))
-;; all data associated with this attribute
-(pprint (take 10 (d/datoms (d/db conn) :avet :wd/entity)))
-;; all data with this attribute and value (would see more if it wasn't unique)
-(pprint (take 10 (d/datoms (d/db conn) :avet :wd/entity "Q2")))
-
-
-
-
-
-
-
-;; Entity queries
-
-;; get all info about this entity as a map (actually an EntityMap)
-(pprint (into {} (d/entity (d/db conn) earth-id)))
-;; this attribute is unique
-(pprint (into {} (d/entity (d/db conn) :wd/entity)))
-;; use lookup refs with unique attributes
-(pprint (into {} (d/entity (d/db conn) [:wd/entity "Q2"])))
+  ;; Querying methods
 
 
 
@@ -300,41 +257,86 @@
 
 
 
+  ;; Datum queries
+  ;; Everything is indexed
+  ;; EAVT - entity, attribute, value, tx
+  ;; AEVT - attribute, entity, value, tx
+  ;; AVET - attribute, value, entity, tx
+  ;; VAET - value, attribute, entity, tx
 
-;; reverse relationships: _attr-name
-;; * relationships can be reversed if you prefix the name with an underscore
+  ;; get all data associated with an entity
+  (pprint (take 10 (d/datoms (d/db conn) :eavt earth-id)))
+  ;; get all the info about this attribute
+  (pprint (take 10 (d/datoms (d/db conn) :eavt 64)))
+  ;; :db/ident has :db/unique set, so we can use a lookup ref
+  (pprint (take 10 (d/datoms (d/db conn) :eavt [:db/ident :rdfs/label])))
+  ;; also, :db/ident is just a programmatic name for a :db/id
+  (pprint (take 10 (d/datoms (d/db conn) :eavt :rdfs/label)))
 
-(def asia (d/entity (d/db conn) asia-id))
-
-;; the first mountain
-(->> asia
-     :datomic-talk/mountains
-     first
-     (into {})
-     pprint)
-
-;; has a reverse reference to the continent
-(->> asia
-     :datomic-talk/mountains
-     first
-     :datomic-talk/_mountains
-     (into {})
-     pprint)
+  ;; an indexed (and unique) attribute
+  (pprint (take 10 (d/datoms (d/db conn) :eavt :wd/entity)))
+  ;; all data associated with this attribute
+  (pprint (take 10 (d/datoms (d/db conn) :avet :wd/entity)))
+  ;; all data with this attribute and value (would see more if it wasn't unique)
+  (pprint (take 10 (d/datoms (d/db conn) :avet :wd/entity "Q2")))
 
 
 
 
 
-;; Pull expressions
 
-(d/pull (d/db conn) [:db/id :rdfs/label :does.not/exist] earth-id)
 
-;; starting at a node in the graph, return a tree of data...
-(pprint
- (d/pull (d/db conn)
-         [:db/id
-          :rdfs/label
-          {:wdata/highest-point [:rdfs/label {:datomic-talk/_mountains [:db/id :rdfs/label]}]}]
-         earth-id))
+  ;; Entity queries
 
-)
+  ;; get all info about this entity as a map (actually an EntityMap)
+  (pprint (into {} (d/entity (d/db conn) earth-id)))
+  ;; this attribute is unique
+  (pprint (into {} (d/entity (d/db conn) :wd/entity)))
+  ;; use lookup refs with unique attributes
+  (pprint (into {} (d/entity (d/db conn) [:wd/entity "Q2"])))
+
+
+
+
+
+
+
+
+
+  ;; reverse relationships: _attr-name
+  ;; * relationships can be reversed if you prefix the name with an underscore
+
+  (def asia (d/entity (d/db conn) asia-id))
+
+  ;; the first mountain
+  (->> asia
+       :datomic-talk/mountains
+       first
+       (into {})
+       pprint)
+
+  ;; has a reverse reference to the continent
+  (->> asia
+       :datomic-talk/mountains
+       first
+       :datomic-talk/_mountains
+       (into {})
+       pprint)
+
+
+
+
+
+  ;; Pull expressions
+
+  (d/pull (d/db conn) [:db/id :rdfs/label :does.not/exist] earth-id)
+
+  ;; starting at a node in the graph, return a tree of data...
+  (pprint
+   (d/pull (d/db conn)
+           [:db/id
+            :rdfs/label
+            {:wdata/highest-point [:rdfs/label {:datomic-talk/_mountains [:db/id :rdfs/label]}]}]
+           earth-id))
+
+  )
