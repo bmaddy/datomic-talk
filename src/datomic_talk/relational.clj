@@ -429,4 +429,38 @@
 
 
 
+
+
+  ;; Other stuff
+
+  ;; tx time is db time, not user time
+
+  ;; model based testing doesn't make as much sense because any entity could have any attr
+  ;; * build your tests for attrs and combinations of attrs
+  ;; * include tests for which groups of attrs can be asserted at the same time (similar to models)
+
+  ;; pass db values around
+  ;; * functions that use the db are now pure, no more composing queries or a big long transaction
+  ;;   * get all benifits of functions being pure (see list in minnebar talk)
+  ;;   * ex. you could pass the same db along to all your validations
+  ;;   * ex. run a bunch of different reports using the same db value
+  ;; * use db-after in tests - no more stubbing db connection
+
+  ;; rules (composable queries)
+
+  ;; speculative updates d/with
+  ;; * forked, read-only connections with datomock (peers only)
+  ;;   * no need for creating dev data, just use staging
+  ;;   * When did QA see that error? Try forking the db at that time
+  ;;   * note: `as-of` + `with` is not a branch, it's a filter with speculative transactions
+
+  ;; related databases
+  ;; * non-durable cljs version: https://github.com/tonsky/datascript
+  ;; * start of a durable OSS project: https://github.com/replikativ/datahike
+  ;;   * uses https://github.com/datacrypt-project/hitchhiker-tree
+  ;; * embeddable https://github.com/mozilla/mentat
+  ;; * querying normal maps https://github.com/djjolicoeur/datamaps
+
+
+
   )
