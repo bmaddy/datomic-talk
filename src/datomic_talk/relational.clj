@@ -376,4 +376,57 @@
        (d/db conn))
 
 
+
+
+
+  ;; When were each of the attributes for this station last modified and who made the change?
+
+  ;; the entity we'll modify
+  (into {} (d/entity (d/db conn) [:station/id 5]))
+
+  ;; add an attribute to track who made changes
+  (d/transact conn [{:db/ident :audit/author
+                     :db/valueType :db.type/string
+                     :db/cardinality :db.cardinality/one}
+                    {:db/ident :audit/source
+                     :db/valueType :db.type/string
+                     :db/cardinality :db.cardinality/one}])
+
+  ;; make a change and include audit info
+  (d/transact conn [{:station/id 5
+                     :station/name "NorthEast University"}
+                    ;; use :db/id "datomic.tx" to add data to the transaction
+                    {:db/id (d/tempid :db.part/tx)
+                     :audit/author "Brian"
+                     :audit/source "updates.2018-07-11.xml"}])
+
+  ;; the times each attribute changed
+  (pprint
+   (d/q '[:find ?attr-name ?v ?t
+          :where
+          [?e :station/id 5]
+          [?e ?a ?v ?tx]
+          [?a :db/ident ?attr-name]
+          [?tx :db/txInstant ?t]]
+        (d/db conn)))
+
+
+  ;; what is every name this station ever had?
+  (let [db (d/db conn)]
+    (map (fn [[name tx]]
+           [name (d/pull db '[:audit/author :audit/source] tx)])
+         (d/q '[:find ?name ?tx
+                :in $ ?station-id
+                :where
+                [?e :station/id ?station-id]
+                [?e :station/name ?name ?tx true]]
+              (d/history (d/db conn)) 5)))
+
+
+  ;; query the db as of a certain point in time
+  (into {} (d/entity (d/as-of (d/db conn) #inst "2018-07-11T15:53:29")
+                     [:station/id 5]))
+
+
+
   )
