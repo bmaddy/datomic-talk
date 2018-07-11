@@ -10,7 +10,8 @@ unzip datomic-free-0.9.5697.zip
 
 # start datomic (after downloading Datomic free)
 cd ~/bin/datomic-free-0.9.5697
-bin/transactor config/samples/free-transactor-template.properties
+# point to the .properties file included in this repository
+bin/transactor -Xms4g -Xmx4g /path-to-datomic-talk/transactor.properties
 ```
 
 ## relational queries and comparisons to sql

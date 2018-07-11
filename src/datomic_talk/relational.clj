@@ -131,12 +131,13 @@
   )
 
 (d/transact conn station-entities)
-;; only load a small subset by default
-(do (d/transact conn (take 20000 trip-entities))
-    ;; so we don't try to print 50k :db/ids
-    :done)
 
 (comment
+  ;; only load a small subset
+  (do (d/transact conn (take 20000 trip-entities))
+      ;; so we don't try to print 50k :db/ids
+      :done)
+
   ;; load everything!
   (doall
    (map (fn [n entities]
@@ -147,8 +148,232 @@
 
   )
 
-(gadget.core/inspect-entity-tree (d/entity (d/db conn) [:station/id 23]))
+(into {} (d/entity (d/db conn) [:station/id 23]))
 (d/q '[:find ?e .
        :where
        [?e :trip/start-station]]
      (d/db conn))
+
+
+
+(comment
+
+  ;; see the start_date and bike_number for the first five trips in the database
+
+  ;; SELECT * FROM trips LIMIT 5;
+  (take 5 (d/q '[:find [?e ...]
+                 :where
+                 [?e :trip/bike-number]]
+               (d/db conn)))
+
+  ;; or
+  (d/q '[:find (sample 5 ?e) .
+         :where
+         [?e :trip/bike-number]]
+       (d/db conn))
+
+
+
+  ;; SELECT duration, start_date FROM trips LIMIT 5
+  (pprint
+   (take 5 (d/q '[:find [(pull ?e [:trip/duration :trip/start-date]) ...]
+                  :where
+                  [?e :trip/duration]
+                  [?e :trip/start-date]]
+                (d/db conn))))
+
+
+
+
+
+
+
+
+
+  ;; find out how long the longest 10 trips lasted
+
+  ;; SELECT duration
+  ;; FROM trips
+  ;; ORDER BY duration DESC
+  ;; LIMIT 10
+  (pprint
+   (take 10
+         (reverse
+          (sort (d/q '[:find [?d ...]
+                       :where
+                       [?e :trip/duration ?d]]
+                     (d/db conn))))))
+
+
+
+
+
+
+  ;; registered trips longer than 9990
+
+  ;; SELECT *
+  ;; FROM trips
+  ;; WHERE (duration >= 9990) AND (sub_type = "Registered")
+  ;; ORDER BY duration DESC;
+  (pprint
+   (take 20
+         (d/q '[:find [(pull ?e [*]) ...]
+                :where
+                [?e :trip/duration ?d]
+                [(>= ?d 9900)]
+                [?e :trip/sub-type "Registered"]]
+              (d/db conn))))
+
+
+
+
+
+
+  ;; How many trips were taken by 'registered' users?
+
+  ;; SELECT COUNT(*)
+  ;; FROM trips
+  ;; WHERE sub_type = "Registered";
+  (d/q '[:find (count ?e) .
+         :where
+         [?e :trip/sub-type "Registered"]]
+       (d/db conn))
+
+
+
+
+
+
+  ;; What was the average trip duration?
+
+  ;; SELECT AVG(duration) AS "Average Duration"
+  ;; FROM trips;
+  (d/q '[:find (avg ?d) .
+         :where
+         [_ :trip/duration ?d]]
+       (d/db conn))
+
+
+
+
+
+
+
+
+  ;; do registered or casual users take longer trips?
+
+  ;; SELECT sub_type, AVG(duration) AS "Average Duration"
+  ;; FROM trips
+  ;; GROUP BY sub_type;
+  (d/q '[:find ?st (avg ?d)
+         :where
+         [?e :trip/sub-type ?st]
+         [?e :trip/duration ?d]]
+       (d/db conn))
+
+
+
+
+
+
+
+  ;; which bike was used for the most trips
+
+  ;; SELECT bike_number as "Bike Number", COUNT(*) AS "Number of Trips"
+  ;; FROM trips
+  ;; GROUP BY bike_number
+  ;; ORDER BY COUNT(*) DESC
+  ;; LIMIT 1;
+  (take 10
+        (reverse
+         (sort-by second (d/q '[:find ?bn (count ?e)
+                                :where
+                                [?e :trip/bike-number ?bn]
+                                #_[(not-empty ?bn)]]
+                              (d/db conn)))))
+
+
+
+
+
+
+
+  ;; average duration of trips by registered members who were over the age of 30 in 2017
+
+  ;; SELECT AVG(duration)
+  ;; FROM trips
+  ;; WHERE (2017 - birth_date) > 30;
+
+  ;; expected: 923.014685
+  (d/q '[:find (avg ?d) .
+         :where
+         [?e :trip/birth-date ?bd]
+         [(- 2017 ?bd) ?age-in-2017]
+         [(> ?age-in-2017 30)]
+         [?e :trip/duration ?d]]
+       (d/db conn))
+
+
+
+
+
+  ;; which station is the most frequent starting point?
+
+  ;; SELECT stations.station AS "Station", COUNT(*) AS "Count"
+  ;; FROM trips
+  ;; INNER JOIN stations
+  ;; ON trips.start_station = stations.id
+  ;; GROUP BY stations.station
+  ;; ORDER BY COUNT(*) DESC
+  ;; LIMIT 5;
+  (take 5 (d/q '[:find ?s (count ?t)
+                 :where
+                 [?t :trip/start-station ?s]]
+               (d/db conn)))
+
+
+
+
+
+
+
+  ;; which stations are most frequently used for round trips?
+
+  ;; SELECT stations.station AS "Station", COUNT(*) AS "Count"
+  ;; FROM trips
+  ;; INNER JOIN stations
+  ;; ON trips.start_station = stations.id
+  ;; WHERE trips.start_station = trips.end_station
+  ;; GROUP BY stations.station
+  ;; ORDER BY COUNT(*) DESC
+  ;; LIMIT 5;
+  (take 5 (d/q '[:find ?s (count ?t)
+                 :where
+                 [?t :trip/start-station ?s]
+                 [?t :trip/end-station ?s]]
+               (d/db conn)))
+
+
+
+
+
+
+
+  ;; how many trips start and end in different municipalities?
+
+  ;; SELECT COUNT(trips.id) AS "Count"
+  ;; FROM trips
+  ;; INNER JOIN stations AS start
+  ;; ON trips.start_station = start.id
+  ;; INNER JOIN stations AS end
+  ;; ON trips.end_station = end.id
+  ;; WHERE start.municipality <> end.municipality;
+  (d/q '[:find (count ?t) .
+         :where
+         [?t :trip/start-station ?start]
+         [?t :trip/end-station ?end]
+         [(not= ?start ?end)]]
+       (d/db conn))
+
+
+  )
