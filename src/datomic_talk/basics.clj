@@ -94,7 +94,7 @@
 (def asia-id (-> @result :tempids (get "asia")))
 
 (comment
-  (gadget.core/inspect-entity-tree (d/entity (d/db conn) asia-id))
+  (pprint (into {} (d/entity (d/db conn) asia-id)))
 
   )
 
@@ -205,7 +205,7 @@
   ;; how this could look in Datomic
 
   ;; [entity attribute      value         transaction added?]
-  #{ [11     :name          "Earth"       6           true]
+  #{[11     :name          "Earth"       6           true]
     [11     :mass          5,972.37      6           true]
     [11     :highest-point 13            6           true]
     [12     :name          "Asia"        6           true]
@@ -225,7 +225,7 @@
   ;; But wait, attributes are entities too!
 
   ;; [entity attribute      value          transaction added?]
-  #{ [1      :db/ident      :name          5           true]
+  #{[1      :db/ident      :name          5           true]
     [2      :db/ident      :mass          5           true]
     [3      :db/ident      :highest-point 5           true]
     [4      :db/ident      :mountains     5           true]

@@ -200,6 +200,7 @@
    (take 10
          (reverse
           (sort (d/q '[:find [?d ...]
+                       :with ?e
                        :where
                        [?e :trip/duration ?d]]
                      (d/db conn))))))
@@ -216,11 +217,11 @@
   ;; WHERE (duration >= 9990) AND (sub_type = "Registered")
   ;; ORDER BY duration DESC;
   (pprint
-   (take 20
+   (take 13
          (d/q '[:find [(pull ?e [*]) ...]
                 :where
                 [?e :trip/duration ?d]
-                [(>= ?d 9900)]
+                [(>= ?d 9990)]
                 [?e :trip/sub-type "Registered"]]
               (d/db conn))))
 
@@ -249,8 +250,12 @@
   ;; SELECT AVG(duration) AS "Average Duration"
   ;; FROM trips;
   (d/q '[:find (avg ?d) .
+         :in $
+         :with ?e
          :where
-         [_ :trip/duration ?d]]
+         [?e :trip/bike-number]
+         ;; it appears their SQL query includes trips of zero length, did they mean to?
+         [(get-else $ ?e :trip/duration 0) ?d]]
        (d/db conn))
 
 
@@ -266,9 +271,12 @@
   ;; FROM trips
   ;; GROUP BY sub_type;
   (d/q '[:find ?st (avg ?d)
+         :in $
+         :with ?e
          :where
          [?e :trip/sub-type ?st]
-         [?e :trip/duration ?d]]
+         [?e :trip/duration ?d]
+         [(get-else $ ?e :trip/duration 0) ?d]]
        (d/db conn))
 
 
@@ -284,12 +292,11 @@
   ;; GROUP BY bike_number
   ;; ORDER BY COUNT(*) DESC
   ;; LIMIT 1;
-  (take 10
+  (first
         (reverse
          (sort-by second (d/q '[:find ?bn (count ?e)
                                 :where
-                                [?e :trip/bike-number ?bn]
-                                #_[(not-empty ?bn)]]
+                                [?e :trip/bike-number ?bn]]
                               (d/db conn)))))
 
 
@@ -304,10 +311,13 @@
   ;; FROM trips
   ;; WHERE (2017 - birth_date) > 30;
 
-  ;; expected: 923.014685
   (d/q '[:find (avg ?d) .
+         :in $
+         :with ?e
          :where
-         [?e :trip/birth-date ?bd]
+         ;; Needed to add a default value to match Dataquest's results. It looks
+         ;; like something is being assumed to be zero in their query.
+         [(get-else $ ?e :trip/birth-date 0) ?bd]
          [(- 2017 ?bd) ?age-in-2017]
          [(> ?age-in-2017 30)]
          [?e :trip/duration ?d]]
@@ -326,10 +336,12 @@
   ;; GROUP BY stations.station
   ;; ORDER BY COUNT(*) DESC
   ;; LIMIT 5;
-  (take 5 (d/q '[:find ?s (count ?t)
-                 :where
-                 [?t :trip/start-station ?s]]
-               (d/db conn)))
+  (take 5
+        (reverse
+         (sort-by second (d/q '[:find ?s (count ?t)
+                                :where
+                                [?t :trip/start-station ?s]]
+                              (d/db conn)))))
 
 
 
@@ -347,11 +359,13 @@
   ;; GROUP BY stations.station
   ;; ORDER BY COUNT(*) DESC
   ;; LIMIT 5;
-  (take 5 (d/q '[:find ?s (count ?t)
-                 :where
-                 [?t :trip/start-station ?s]
-                 [?t :trip/end-station ?s]]
-               (d/db conn)))
+  (take 5
+        (reverse
+         (sort-by second (d/q '[:find ?s (count ?t)
+                                :where
+                                [?t :trip/start-station ?s]
+                                [?t :trip/end-station ?s]]
+                              (d/db conn)))))
 
 
 
@@ -372,7 +386,9 @@
          :where
          [?t :trip/start-station ?start]
          [?t :trip/end-station ?end]
-         [(not= ?start ?end)]]
+         [?start :station/municipality ?sm]
+         [?end :station/municipality ?em]
+         [(not= ?sm ?em)]]
        (d/db conn))
 
 
